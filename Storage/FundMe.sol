@@ -4,40 +4,37 @@
 
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.8;
-import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import "./PriceConverter.sol";
 
 contract FundMe {
+
+    using PriceConverter for uint256;
+
     uint256 public minUSD = 50 * 1e18;
 
+    address[] public funders;
+    mapping(address => uint256) public addressToAmountFunded;
+
+    // msg.sender -> sender of the message
+    // msg.value -> number of wei send with the message
     function fund() public payable {
-        require(msg.value >= minUSD, "Didn't send enough!");  // 1e18 = 1*10**18
-    }
+        require(msg.value.getConversionRate() >= minUSD, "Didn't send enough!");  // 1e18 = 1*10**18
+        funders.push(msg.sender);
+        addressToAmountFunded[msg.sender] = msg.value;
+    } 
 
-    function getPrice () public view returns (uint256) {
-        // ABI
-        // Address : 0x694AA1769357215DE4FAC081bf1f309aDC325306
-        AggregatorV3Interface priceFeed = AggregatorV3Interface(0x694AA1769357215DE4FAC081bf1f309aDC325306);
-        (
-            /* uint80 roundID */,
-            int answer,
-            /*uint startedAt*/,
-            /*uint timeStamp*/,
-            /*uint80 answeredInRound*/
-        ) = priceFeed.latestRoundData();
-        return uint256(answer * 1e10);    // ETH in terms of USD
-    }
+    function withdraw() public {
+        for(uint256 funderIndex=0; funderIndex<funders.length; funderIndex++){
+            address funder = funders[funderIndex];
+            addressToAmountFunded[funder] = 0;
+        } 
 
-    function getVersion () public view returns (uint256){
-        AggregatorV3Interface priceFeed = AggregatorV3Interface(0x694AA1769357215DE4FAC081bf1f309aDC325306);
-        return priceFeed.version();
-    }
+        // reset the array
+        funders = new address[](0);
 
-    function getConversionRate(uint256 ethAmount) public view returns(uint256){
-        uint256 ethPrice = getPrice();
-        // 30000_000000000000000000 = ETH / USD price
-        uint256 ethAmountInUsd = (ethPrice * ethAmount) / 1e18;
-        return ethAmountInUsd;
+        // actually withdraw the funds
+        // transfer
+        // send
+        // call
     }
-
-    // function withdraw()
 }
